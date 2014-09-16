@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<FrameLayout
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:onClick="CalculatePressed">
+
+    <RelativeLayout
+        android:layout_width="fill_parent"
+        android:layout_height="270dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_gravity="center_horizontal|bottom">
+
+        <EditText
+            android:layout_width="440dp"
+            android:layout_height="250dp"
+            android:inputType="textMultiLine"
+            android:ems="10"
+            android:id="@+id/TextArea"
+            android:layout_alignParentStart="true" />
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:layout_width="fill_parent"
+        android:layout_height="241dp"
+        android:layout_gravity="center_horizontal|top">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="Supporto minimo"
+            android:id="@+id/textView2"
+            android:layout_gravity="left|top"
+            android:layout_marginTop="50dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentStart="true"
+            android:layout_marginLeft="35dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="Epsilon(0.0)"
+            android:id="@+id/epsTxt"
+            android:layout_gravity="left|top"
+            android:layout_centerVertical="true"
+            android:layout_alignStart="@+id/textView2"
+            android:layout_marginLeft="19dp" />
+
+        <EditText
+            android:layout_width="71dp"
+            android:layout_height="32dp"
+            android:inputType="number"
+            android:ems="10"
+            android:id="@+id/MinSupEditText"
+            android:layout_marginRight="52dp"
+            android:layout_alignParentEnd="true"
+            android:text="0.4"
+            android:layout_marginTop="49dp" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Calculate"
+            android:id="@+id/CalculateBnt"
+            android:onClick="CalculatePressed"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true" />
+
+        <SeekBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/EpsilonseekBar"
+            android:layout_toEndOf="@+id/textView2"
+            android:max="100"
+            android:progress="5"
+            android:indeterminate="false"
+            android:layout_marginTop="105dp"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="15dp" />
+
+        <CheckBox
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ignora Cache"
+            android:id="@+id/IgnoraCachecheckBox"
+            android:layout_above="@+id/CalculateBnt"
+            android:layout_toStartOf="@+id/MinSupEditText"
+            android:checked="false" />
+
+    </RelativeLayout>
+
+</FrameLayout>
