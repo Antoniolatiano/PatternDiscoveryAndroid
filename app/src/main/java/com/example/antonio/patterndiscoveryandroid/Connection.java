@@ -28,9 +28,9 @@ public class Connection {
         Log.d("INFO", "Stream aperti");
     }
 
-    public void CloseConnection() throws IOException {
+    public void CloseConnection() throws IOException, JSONException {
         if (out != null && in != null) {
-            out.writeUTF("end");
+            out.writeUTF(new JSONObject().put("cmd", "end").toString());
             out.close();
             in.close();
         }
@@ -39,32 +39,26 @@ public class Connection {
     }
 
     public String Comunicate(final float minSup, final float epsilon, final String table) {
-        final String[] Return = new String[1];
-        Thread conn = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                JSONObject json = new JSONObject();
-                try {
-                    json.put("cmd", "discovery");
-                    json.put("table", table);
-                    json.put("minSup", minSup);
-                    json.put("epsilon", epsilon + 0.0005);
-                    out.writeUTF(json.toString());
-                    out.flush();
-                    Return[0] = in.readUTF();
-                    if (Return[0] == null || Return[0].isEmpty()) {
-                        Return[0] = in.readUTF();
-                    }
-                } catch (IOException e) {
-                    Log.e("ERROR", "Impossibile Comunicare");
-                    Return[0] = "Errore Comunicazione, Riprovare";
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+        String Return;
+        JSONObject json = new JSONObject();
+        try {
+            json.put("cmd", "discovery");
+            json.put("table", table);
+            json.put("minSup", minSup);
+            json.put("epsilon", epsilon + 0.0005);
+            out.writeUTF(json.toString());
+            out.flush();
+            Return = in.readUTF();
+            if (Return == null || Return.isEmpty()) {
+                Return = "Errore Comunicazione, Return null Riprovare";
             }
-        });
-        conn.start();
-        while (conn.isAlive()) ;
-        return Return[0];
+        } catch (IOException e) {
+            Log.e("ERROR", "Impossibile Comunicare");
+            Return = "Errore Comunicazione, Riprovare";
+        } catch (JSONException e) {
+            e.printStackTrace();
+            Return = "Errore Comunicazione JSON, Riprovare";
+        }
+        return Return;
     }
 }

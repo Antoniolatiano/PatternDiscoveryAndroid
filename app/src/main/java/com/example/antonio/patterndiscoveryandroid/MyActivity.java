@@ -16,15 +16,13 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 
 
 public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListener, Runnable {
+    public final String[] jsonString = {""};
+    public final String[] toshow = {""};
     private final MyActivity instance = this;
     private Connection connection;
     private EditText msgAreaTxt, MinSupEditText;
@@ -33,14 +31,10 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
     private int Port;
     private float epsilonValue;
     private File file;
-    private ProgressDialog dialog;
-    private int Tentativi = 0;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        dialog = new ProgressDialog(this);
         setContentView(R.layout.activity_main);
         msgAreaTxt = (EditText) findViewById(R.id.TextArea);
         MinSupEditText = (EditText) findViewById(R.id.MinSupEditText);
@@ -65,11 +59,44 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
     public void onResume() {
         super.onResume();
         Log.i("PatternDiscovery", "Chiamato onResume");
+        final ProgressDialog dialog = new ProgressDialog(this);
         dialog.setCancelable(false);
         dialog.setIndeterminate(true);
         dialog.setMessage("Connessione al Server");
         dialog.show();
-        new Thread(this).start();
+        new Thread(new Runnable() {
+            int Tentativi = 0;
+
+            @Override
+            public void run() {
+                try {
+                    while (connection == null && Tentativi < 5) {
+                        try {
+                            Thread.sleep(2000);
+                            Log.i("PatternDiscovery", "Tentativo di Connessione " + (Tentativi + 1) + " ad " + IP + ":" + Port);
+                            connection = new Connection(IP, Port);
+                        } catch (IOException e) {
+                            MakeToast("Tentativo di connessione " + (Tentativi + 1) + " Fallito", Toast.LENGTH_SHORT);
+                            Thread.sleep(2500);
+                        }
+                        Tentativi++;
+                    }
+                    if (connection != null) {
+                        MakeToast("Connesso", Toast.LENGTH_SHORT);
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } finally {
+                    dialog.dismiss();
+                    Log.i("PatternDiscovery", "Dialog Chiusa");
+                    if (connection == null) {
+                        Log.i("PatternDiscovery", "Connessione nulla, torno indietro");
+                        MakeToast("Connessione fallita, verificare i dati e riprovare", Toast.LENGTH_SHORT);
+                        instance.finish();
+                    }
+                }
+            }
+        }).start();
     }
 
     @Override
@@ -79,7 +106,10 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
                 connection.CloseConnection();
             } catch (IOException e) {
                 e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
+            connection = null;
         }
         super.onPause();
     }
@@ -88,42 +118,20 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
         Log.d("PatternDiscovery", "Calculate Pressed");
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(MinSupEditText.getWindowToken(), 0);
-        String toshow = "";
         file = new File(getFilesDir(), "playtennis_" + MinSupEditText.getText() + "_" + epsilonValue);
-        try {
-            if (MinSupEditText.getText().length() != 0)
-                if (!((CheckBox)findViewById(R.id.IgnoraCachecheckBox)).isChecked() && file.exists() && file.length() > 3) {
-                    Log.d("PatternDiscovery", "File " + file.getName() + " Trovato");
-                    DataInputStream input = new DataInputStream(new FileInputStream(file));
-                    toshow = input.readUTF();
-                    input.close();
-                    Log.d("PatternDiscovery", "File caricato");
-                    MakeToast("Pattern caricati da Cache",Toast.LENGTH_SHORT);
-                } else {
-                    String jsonString = connection.Comunicate(Float.valueOf(MinSupEditText.getText().toString()), epsilonValue, "playtennis");
-                    JSONObject json = new JSONObject(jsonString);
-                    toshow = json.getString("Frequent") + json.getString("Closed");
-                    MakeToast("Pattern caricati da Database",Toast.LENGTH_SHORT);
-                    if (!file.exists()) {
-                        file.createNewFile();
-                    }
-                    Log.i("PatternDiscovery", "Salvo il file");
-                    DataOutputStream data = new DataOutputStream(new FileOutputStream(file));
-                    data.writeUTF(msgAreaTxt.getText().toString() + "\n");
-                    data.close();
-                    Log.i("PatternDiscovery", "File " + file.getName() + " Salvato");
-                }
-            else {
-                toshow = "Riempire tutti i Campi";
-                Log.d("ERROR", "Parametri Mancanti");
-                MakeToast("Riempire Tutti i campi", Toast.LENGTH_SHORT);
+        if (MinSupEditText.getText().length() != 0) {
+            if (!((CheckBox) findViewById(R.id.IgnoraCachecheckBox)).isChecked() && file.exists() && file.length() > 3) {
+                Log.d("PatternDiscovery", "File " + file.getName() + " Trovato");
+                msgAreaTxt.setText(SupportClass.GetPatternsFromFile(file, instance));
+                Log.d("PatternDiscovery", "File caricato");
+                MakeToast("Pattern caricati da Cache", Toast.LENGTH_SHORT);
+            } else {
+                SupportClass.GetPatternsFromDB(instance, connection, Float.valueOf(MinSupEditText.getText().toString()), epsilonValue);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
-            e.printStackTrace();
+        } else {
+            Log.d("ERROR", "Parametri Mancanti");
+            MakeToast("Riempire Tutti i campi", Toast.LENGTH_SHORT);
         }
-        msgAreaTxt.setText(toshow);
     }
 
     public void MakeToast(final String Message, final int ToastLenght) {
@@ -151,32 +159,21 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
 
     @Override
     public void run() {
+        MakeToast("Pattern caricati da Database", Toast.LENGTH_SHORT);
         try {
-            while (connection == null && Tentativi < 5) {
-                try {
-                    Thread.sleep(2000);
-                    Log.i("PatternDiscovery", "Tentativo di Connessione " + (Tentativi + 1) + " ad " + IP + ":" + Port);
-                    connection = new Connection(IP, Port);
-                } catch (IOException e) {
-                    MakeToast("Tentativo di connessione " + (Tentativi + 1) + " Fallito", Toast.LENGTH_SHORT);
-                    Thread.sleep(2500);
-                }
-                Tentativi++;
-            }
-            if (connection != null) {
-                MakeToast("Connesso", Toast.LENGTH_SHORT);
-            }
-        } catch (InterruptedException e) {
+            JSONObject json = new JSONObject(jsonString[0]);
+            toshow[0] = json.getString("Frequent") + json.getString("Closed");
+            SupportClass.SaveFile(file, toshow[0] + "\n", instance);
+        } catch (JSONException e) {
             e.printStackTrace();
-        } finally {
-            dialog.dismiss();
-            Log.i("PatternDiscovery", "Dialog Chiusa");
-            if (connection == null) {
-                Log.i("PatternDiscovery", "Connessione nulla, torno indietro");
-                MakeToast("Connessione fallita, verificare i dati e riprovare", Toast.LENGTH_SHORT);
-                instance.finish();
-            }
         }
+        Log.i("PatternDiscovery", "File " + file.getName() + " Salvato");
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                msgAreaTxt.setText(toshow[0]);
+            }
+        });
     }
 
     /*  @Override
