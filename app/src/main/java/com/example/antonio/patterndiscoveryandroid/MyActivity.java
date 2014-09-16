@@ -13,6 +13,9 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -21,7 +24,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 
-public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListener {
+public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListener, Runnable {
+    private final MyActivity instance = this;
     private Connection connection;
     private EditText msgAreaTxt, MinSupEditText;
     private TextView EpsilonLabel;
@@ -29,10 +33,14 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
     private int Port;
     private float epsilonValue;
     private File file;
+    private ProgressDialog dialog;
+    private int Tentativi = 0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        dialog = new ProgressDialog(this);
         setContentView(R.layout.activity_main);
         msgAreaTxt = (EditText) findViewById(R.id.TextArea);
         MinSupEditText = (EditText) findViewById(R.id.MinSupEditText);
@@ -57,38 +65,11 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
     public void onResume() {
         super.onResume();
         Log.i("PatternDiscovery", "Chiamato onResume");
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                int Tries=0;
-                final ProgressDialog dialog=new ProgressDialog(MyActivity.this);
-                dialog.setIndeterminate(true);
-                dialog.setMessage("Connessione al server");
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        dialog.show();
-                    }
-                });
-                while(connection==null && Tries<5 ) {
-                    try {
-                        Thread.sleep(500);
-                        Log.i("PatternDiscovery", "Tentativo di Connessione " +(Tries+1)+" ad " + IP + ":" + Port);
-                        connection = new Connection(IP, Port);
-                    } catch (IOException e) {
-                        MakeToast("Tentativo di connessione " + (Tries + 1) + "Fallito", Toast.LENGTH_SHORT);
-                        Tries++;
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-                if(connection==null){
-                    dialog.dismiss();
-                }else {
-                    dialog.dismiss();
-                }
-            }
-        }).start();
+        dialog.setCancelable(false);
+        dialog.setIndeterminate(true);
+        dialog.setMessage("Connessione al Server");
+        dialog.show();
+        new Thread(this).start();
     }
 
     @Override
@@ -119,7 +100,9 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
                     Log.d("PatternDiscovery", "File caricato");
                     MakeToast("Pattern caricati da Cache",Toast.LENGTH_SHORT);
                 } else {
-                    toshow = connection.Comunicate(Float.valueOf(MinSupEditText.getText().toString()), epsilonValue, "playtennis");
+                    String jsonString = connection.Comunicate(Float.valueOf(MinSupEditText.getText().toString()), epsilonValue, "playtennis");
+                    JSONObject json = new JSONObject(jsonString);
+                    toshow = json.getString("Frequent") + json.getString("Closed");
                     MakeToast("Pattern caricati da Database",Toast.LENGTH_SHORT);
                     if (!file.exists()) {
                         file.createNewFile();
@@ -136,6 +119,8 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
                 MakeToast("Riempire Tutti i campi", Toast.LENGTH_SHORT);
             }
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
             e.printStackTrace();
         }
         msgAreaTxt.setText(toshow);
@@ -163,6 +148,36 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
 
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {}
+
+    @Override
+    public void run() {
+        try {
+            while (connection == null && Tentativi < 5) {
+                try {
+                    Thread.sleep(2000);
+                    Log.i("PatternDiscovery", "Tentativo di Connessione " + (Tentativi + 1) + " ad " + IP + ":" + Port);
+                    connection = new Connection(IP, Port);
+                } catch (IOException e) {
+                    MakeToast("Tentativo di connessione " + (Tentativi + 1) + " Fallito", Toast.LENGTH_SHORT);
+                    Thread.sleep(2500);
+                }
+                Tentativi++;
+            }
+            if (connection != null) {
+                MakeToast("Connesso", Toast.LENGTH_SHORT);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            dialog.dismiss();
+            Log.i("PatternDiscovery", "Dialog Chiusa");
+            if (connection == null) {
+                Log.i("PatternDiscovery", "Connessione nulla, torno indietro");
+                MakeToast("Connessione fallita, verificare i dati e riprovare", Toast.LENGTH_SHORT);
+                instance.finish();
+            }
+        }
+    }
 
     /*  @Override
     public void onSaveInstanceState(Bundle outState){
