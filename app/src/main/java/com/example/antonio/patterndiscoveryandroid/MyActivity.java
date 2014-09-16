@@ -63,6 +63,7 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
                 int Tries=0;
                 final ProgressDialog dialog=new ProgressDialog(MyActivity.this);
                 dialog.setIndeterminate(true);
+                dialog.setTitle("Connessione");
                 dialog.setMessage("Connessione al server");
                 runOnUiThread(new Runnable() {
                     @Override
@@ -119,6 +120,7 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
                     Log.d("PatternDiscovery", "File caricato");
                     MakeToast("Pattern caricati da Cache",Toast.LENGTH_SHORT);
                 } else {
+
                     toshow = connection.Comunicate(Float.valueOf(MinSupEditText.getText().toString()), epsilonValue, "playtennis");
                     MakeToast("Pattern caricati da Database",Toast.LENGTH_SHORT);
                     if (!file.exists()) {
