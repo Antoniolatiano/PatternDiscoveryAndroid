@@ -57,45 +57,35 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
     public void onResume() {
         super.onResume();
         Log.i("PatternDiscovery", "Chiamato onResume");
-        final Thread a = new Thread(new Runnable() {
-            int Tentativi = 0;
-            @Override
-            public void run() {
-                while (connection == null && Tentativi < 5) {
-                    try {
-                        Thread.sleep(2000);
-                        Log.i("PatternDiscovery", "Tentativo di Connessione " + (Tentativi + 1) + " ad " + IP + ":" + Port);
-                        connection = new Connection(IP, Port);
-                    } catch (IOException e) {
-                        MakeToast("Tentativo di connessione " + (Tentativi + 1) + " Fallito", Toast.LENGTH_SHORT);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    Tentativi++;
-                }
-            }
-        });
-        a.start();
-        final ProgressDialog dialog = ProgressDialog.show(this, "Connessione", "Connessione al server", true);
-        final MyActivity instance = this;
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    while (a.isAlive()) {
-                        Thread.sleep(300);
+                int Tries=0;
+                final ProgressDialog dialog=new ProgressDialog(MyActivity.this);
+                dialog.setIndeterminate(true);
+                dialog.setMessage("Connessione al server");
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        dialog.show();
                     }
-                    Thread.sleep(2500);
-                    dialog.dismiss();
-                    Log.i("PatternDiscovery", "Dialog Chiusa");
-                    if (connection == null) {
-                        Log.i("PatternDiscovery", "Connessione Nulla, torno indietro");
-                        MakeToast("Connessione fallita, verificare i dati e riprovare", Toast.LENGTH_SHORT);
+                });
+                while(connection==null && Tries<5 ) {
+                    try {
                         Thread.sleep(500);
-                        instance.finish();
+                        Log.i("PatternDiscovery", "Tentativo di Connessione " +(Tries+1)+" ad " + IP + ":" + Port);
+                        connection = new Connection(IP, Port);
+                    } catch (IOException e) {
+                        MakeToast("Tentativo di connessione " + (Tries + 1) + "Fallito", Toast.LENGTH_SHORT);
+                        Tries++;
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                }
+                if(connection==null){
+                    dialog.dismiss();
+                }else {
+                    dialog.dismiss();
                 }
             }
         }).start();
@@ -132,9 +122,7 @@ public class MyActivity extends Activity implements SeekBar.OnSeekBarChangeListe
                     toshow = connection.Comunicate(Float.valueOf(MinSupEditText.getText().toString()), epsilonValue, "playtennis");
                     MakeToast("Pattern caricati da Database",Toast.LENGTH_SHORT);
                     if (!file.exists()) {
-                        if (!file.createNewFile()) {
-                            MakeToast("Impossibile creare il File", Toast.LENGTH_SHORT);
-                        }
+                        file.createNewFile();
                     }
                     Log.i("PatternDiscovery", "Salvo il file");
                     DataOutputStream data = new DataOutputStream(new FileOutputStream(file));
